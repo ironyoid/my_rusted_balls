@@ -4,16 +4,24 @@ const G: f32 = 9.82;
 trait ProcessObject {
     fn process(&mut self, time: f32, w: u32, h: u32);
     fn draw(&self, draw_handler: &mut RaylibDrawHandle);
+    fn detect_collision(&self, w: u32, h: u32) -> bool;
 }
 
 impl ProcessObject for Ball {
     fn process(&mut self, time: f32, w: u32, h: u32) {
+        self.speed += self.acel * time;
+        self.delta_y += self.speed * time + self.speed * time.powf(2.0) / 2.0;
+        self.y = self.delta_y.round() as u32;
+        if self.detect_collision(w, h) {
+            self.acel = self.acel;
+            self.speed = -self.speed;
+        }
+    }
+    fn detect_collision(&self, w: u32, h: u32) -> bool {
         if self.y < h - self.radius {
-            self.speed += self.acel * time;
-            self.delta_y += self.speed * time + self.speed * time.powf(2.0) / 2.0;
-            self.y = self.delta_y.round() as u32;
+            false
         } else {
-            self.y = h - self.radius;
+            true
         }
     }
     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
@@ -21,12 +29,12 @@ impl ProcessObject for Ball {
     }
 }
 
-impl ProcessObject for Square {
-    fn process(&mut self, time: f32, w: u32, h: u32) {
-        print!("Square y={}\n", self.y);
-    }
-    fn draw(&self, draw_handler: &mut RaylibDrawHandle) {}
-}
+// impl ProcessObject for Square {
+//     fn process(&mut self, time: f32, w: u32, h: u32) {
+//         print!("Square y={}\n", self.y);
+//     }
+//     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {}
+// }
 
 struct Ball {
     init_x: u32,
