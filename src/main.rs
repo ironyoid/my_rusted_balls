@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_variables)]
 use raylib::prelude::*;
 use std::time::SystemTime;
+mod quadtree;
 trait ProcessObject {
     fn process(&mut self, time: f32, w: u32, h: u32);
     fn draw(&self, draw_handler: &mut RaylibDrawHandle);
@@ -163,6 +164,7 @@ fn main() {
     const WINDOW_WIDTH: u32 = 640;
     const WINDOW_HEIGHT: u32 = 480;
     const MODEL_PERIOD: f64 = 0.01;
+    let tree = quadtree::QuadTree::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32);
     let (mut rl, thread) = raylib::init()
         .size(WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32)
         .title("Bouncing Balls")
