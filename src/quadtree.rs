@@ -1,87 +1,24 @@
 use raylib::{
     color::Color,
-    ffi::Rectangle,
-    prelude::{RaylibDraw, RaylibDrawHandle, Vector2},
+    prelude::{RaylibDrawHandle, Vector2},
 };
 use std::collections::VecDeque;
 
-pub trait ElementTrait: Clone + std::fmt::Display {
+pub trait ObjectTrait: Clone + std::fmt::Display {
     fn get_box(&self) -> QuadBox;
     fn set_color(&mut self, color: Color);
     fn draw(&self, draw_handler: &mut RaylibDrawHandle);
     fn set_coordinate(&mut self, new_vec: Vector2);
 }
-#[derive(Clone)]
-pub struct Element {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-    pub name: String,
-    pub color: Color,
-}
 
-impl std::fmt::Display for Element {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "({}:[{}, {}, {}, {}])",
-            self.name, self.x, self.y, self.width, self.height
-        )
-    }
-}
-
-impl ElementTrait for Element {
-    fn get_box(&self) -> QuadBox {
-        QuadBox::new(self.x, self.y, self.width, self.height)
-    }
-    fn set_color(&mut self, color: Color) {
-        self.color = color;
-    }
-    fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
-        draw_handler.draw_text(&self.name, self.x as i32, self.y as i32, 5, Color::BLACK);
-        let rec = Rectangle {
-            x: self.x,
-            y: self.y,
-            width: self.width,
-            height: self.height,
-        };
-        draw_handler.draw_rectangle_lines_ex(rec, 3.0, self.color);
-        // draw_handler.draw_rectangle_lines_ex(
-        //     self.x as i32,
-        //     self.y as i32,
-        //     self.width as i32,
-        //     self.height as i32,
-        //     self.color,
-        // );
-    }
-    fn set_coordinate(&mut self, new_vec: Vector2) {
-        self.x = new_vec.x;
-        self.y = new_vec.y;
-    }
-}
-
-impl Element {
-    pub fn new(x: f32, y: f32, width: f32, height: f32, name: String) -> Self {
-        Self {
-            x: x,
-            y: y,
-            width: width,
-            height: height,
-            name: name,
-            color: Color::BLUE,
-        }
-    }
-}
-
-pub struct QuadTree<T: ElementTrait> {
+pub struct QuadTree<T: ObjectTrait> {
     root: Subtree<T>,
     u_box: QuadBox,
     max_depth: u32,
     max_num_of_elems: usize,
 }
 
-struct Subtree<T: ElementTrait>(Option<Box<Node<T>>>);
+struct Subtree<T: ObjectTrait>(Option<Box<Node<T>>>);
 
 #[derive(Clone)]
 pub struct QuadBox {
@@ -102,7 +39,7 @@ impl std::fmt::Display for QuadBox {
 }
 
 impl QuadBox {
-    fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
         QuadBox {
             x: x,
             y: y,
@@ -148,12 +85,12 @@ impl QuadBox {
     }
 }
 
-struct Node<T: ElementTrait> {
+struct Node<T: ObjectTrait> {
     values: Vec<Box<T>>,
     children: [Subtree<T>; 4],
 }
 
-impl<T: ElementTrait> Node<T> {
+impl<T: ObjectTrait> Node<T> {
     fn new() -> Self {
         Self {
             values: Vec::new(),
@@ -174,7 +111,7 @@ impl<T: ElementTrait> Node<T> {
     }
 }
 
-impl<T: ElementTrait> std::fmt::Display for Node<T> {
+impl<T: ObjectTrait> std::fmt::Display for Node<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if write!(f, "[") == Ok(()) {
             for n in self.values.iter() {
@@ -188,7 +125,7 @@ impl<T: ElementTrait> std::fmt::Display for Node<T> {
     }
 }
 
-impl<T: ElementTrait> Subtree<T> {
+impl<T: ObjectTrait> Subtree<T> {
     fn new() -> Self {
         Self(None)
     }
@@ -369,8 +306,6 @@ impl<T: ElementTrait> Subtree<T> {
                 if u_box.intersects(&n.get_box()) {
                     ret_elems.push(*n.clone());
                     n.set_color(Color::RED);
-                } else {
-                    //n.set_color(Color::BLUE);
                 }
             }
 
@@ -388,7 +323,7 @@ impl<T: ElementTrait> Subtree<T> {
     }
 }
 
-impl<T: ElementTrait> QuadTree<T> {
+impl<T: ObjectTrait> QuadTree<T> {
     const MAX_DEPTH: u32 = 16;
     const MAX_NUM_OF_ELEMS: usize = 2;
     pub fn new(width: f32, height: f32) -> Self {
@@ -414,7 +349,7 @@ impl<T: ElementTrait> QuadTree<T> {
     pub fn draw_tree(&mut self, draw_handler: &mut RaylibDrawHandle) {
         self.root.draw_tree(draw_handler);
     }
-    pub fn query(&mut self, elem: &T) -> Vec<T> {
+    pub fn query<E: ObjectTrait>(&mut self, elem: &E) -> Vec<T> {
         let mut ret: Vec<T> = Vec::new();
         self.root.query(&self.u_box, &elem.get_box(), &mut ret);
         ret

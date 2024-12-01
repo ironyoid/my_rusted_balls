@@ -1,8 +1,9 @@
 #![allow(dead_code, unused_variables)]
 #![feature(extract_if)]
-use quadtree::{Element, ElementTrait};
+use quadtree::ObjectTrait;
 use raylib::prelude::*;
 use std::time::SystemTime;
+mod objects;
 mod quadtree;
 trait ProcessObject {
     fn process(&mut self, time: f32, w: u32, h: u32);
@@ -10,123 +11,60 @@ trait ProcessObject {
     fn detect_collision(&mut self, w: u32, h: u32) -> bool;
 }
 
-impl ProcessObject for Ball {
-    fn process(&mut self, time: f32, w: u32, h: u32) {
-        println!(
-            "speed: {},{} current: {},{} acel: {}",
-            self.speed.x, self.speed.y, self.current.x, self.current.y, self.acel.y
-        );
-        self.speed = self.speed + self.acel * time;
-        self.acel.x = self.acel.x / 1.15;
-        let delta_y = self.speed.y * time + self.acel.y * time.powf(2.0) / 2.0;
-        self.current.y = self.current.y + delta_y;
-        self.current.x = self.current.x + self.speed.x * time;
+// impl ProcessObject for objects::Circle {
+//     fn process(&mut self, time: f32, w: u32, h: u32) {
+//         println!(
+//             "speed: {},{} current: {},{} acel: {}",
+//             self.speed.x, self.speed.y, self.current.x, self.current.y, self.acel.y
+//         );
+//         self.speed = self.speed + self.acel * time;
+//         self.acel.x = self.acel.x / 1.15;
+//         let delta_y = self.speed.y * time + self.acel.y * time.powf(2.0) / 2.0;
+//         self.current.y = self.current.y + delta_y;
+//         self.current.x = self.current.x + self.speed.x * time;
 
-        if self.detect_collision(w, h) {
-            self.speed = -self.speed * 0.9;
-        }
-        // if self.detect_collision(w, h) {
-        //     self.y = h as f64 - self.radius;
-        //     self.speed = -self.speed;
-        //     self.y -= delta_y;
-        // }
-    }
-    fn detect_collision(&mut self, w: u32, h: u32) -> bool {
-        let tmp = self.current + self.radius;
-        if tmp.x >= w as f32 && tmp.y > 0.0 && tmp.y < h as f32 {
-            self.current.x = w as f32 - self.radius;
-            self.speed.y = -self.speed.y;
-            return true;
-        }
-        if tmp.x < 0.0 && tmp.y > 0.0 && tmp.y < h as f32 {
-            self.current.x = self.radius;
-            self.speed.y = -self.speed.y;
-            return true;
-        }
-        if tmp.y >= h as f32 && tmp.x > 0.0 && tmp.x < w as f32 {
-            self.current.y = h as f32 - self.radius;
-            self.speed.x = -self.speed.x;
-            return true;
-        }
-        if tmp.y <= 0.0 && tmp.x > 0.0 && tmp.x < w as f32 {
-            self.current.y = self.radius;
-            self.speed.x = -self.speed.x;
-            return true;
-        }
-        false
-    }
-    fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
-        draw_handler.draw_circle(
-            self.current.x as i32,
-            self.current.y as i32,
-            self.radius as f32,
-            self.color,
-        );
-    }
-}
-
-struct Ball {
-    init: Vector2,
-    current: Vector2,
-    acel: Vector2,
-    speed: Vector2,
-    radius: f32,
-    color: Color,
-}
-struct BallBuilder {
-    init: Vector2,
-    current: Vector2,
-    acel: Vector2,
-    speed: Vector2,
-    radius: f32,
-    color: Color,
-}
-impl BallBuilder {
-    fn new() -> BallBuilder {
-        BallBuilder {
-            init: Vector2 { x: 0.0, y: 0.0 },
-            current: Vector2 { x: 0.0, y: 0.0 },
-            acel: Vector2 { x: 0.0, y: 0.0 },
-            speed: Vector2 { x: 0.0, y: 0.0 },
-            radius: 0.0,
-            color: Color::RED,
-        }
-    }
-    fn pos(&mut self, x: f32, y: f32) -> &mut BallBuilder {
-        self.init.x = x;
-        self.init.y = y;
-        self.current = self.init;
-        self
-    }
-    fn acel(&mut self, x: f32, y: f32) -> &mut BallBuilder {
-        self.acel.x = x;
-        self.acel.y = y;
-        self
-    }
-    fn speed(&mut self, x: f32, y: f32) -> &mut BallBuilder {
-        self.speed.x = x;
-        self.speed.y = y;
-        self
-    }
-    fn radius(&mut self, radius: f32) -> &mut BallBuilder {
-        self.radius = radius;
-        self
-    }
-    fn color(&mut self, color: Color) -> &mut BallBuilder {
-        self.color = color;
-        self
-    }
-    fn build(&self) -> Ball {
-        Ball {
-            init: self.init,
-            current: self.current,
-            acel: self.acel,
-            speed: self.speed,
-            radius: self.radius,
-            color: self.color,
-        }
-    }
-}
+//         if self.detect_collision(w, h) {
+//             self.speed = -self.speed * 0.9;
+//         }
+//         // if self.detect_collision(w, h) {
+//         //     self.y = h as f64 - self.radius;
+//         //     self.speed = -self.speed;
+//         //     self.y -= delta_y;
+//         // }
+//     }
+//     fn detect_collision(&mut self, w: u32, h: u32) -> bool {
+//         let tmp = self.current + self.radius;
+//         if tmp.x >= w as f32 && tmp.y > 0.0 && tmp.y < h as f32 {
+//             self.current.x = w as f32 - self.radius;
+//             self.speed.y = -self.speed.y;
+//             return true;
+//         }
+//         if tmp.x < 0.0 && tmp.y > 0.0 && tmp.y < h as f32 {
+//             self.current.x = self.radius;
+//             self.speed.y = -self.speed.y;
+//             return true;
+//         }
+//         if tmp.y >= h as f32 && tmp.x > 0.0 && tmp.x < w as f32 {
+//             self.current.y = h as f32 - self.radius;
+//             self.speed.x = -self.speed.x;
+//             return true;
+//         }
+//         if tmp.y <= 0.0 && tmp.x > 0.0 && tmp.x < w as f32 {
+//             self.current.y = self.radius;
+//             self.speed.x = -self.speed.x;
+//             return true;
+//         }
+//         false
+//     }
+//     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
+//         draw_handler.draw_circle(
+//             self.current.x as i32,
+//             self.current.y as i32,
+//             self.radius as f32,
+//             self.color,
+//         );
+//     }
+// }
 
 struct Model {
     width: u32,
@@ -167,52 +105,35 @@ fn main() {
     const WINDOW_HEIGHT: u32 = 480;
     const MODEL_PERIOD: f64 = 0.01;
     let mut tree = quadtree::QuadTree::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32);
-    let mut elems: Vec<Element> = Vec::new();
-    elems.push(quadtree::Element::new(
-        350.0,
-        10.0,
-        50.0,
-        50.0,
-        "elem1".to_string(),
-    ));
-    elems.push(quadtree::Element::new(
-        410.0,
-        9.0,
-        50.0,
-        50.0,
-        "elem2".to_string(),
-    ));
-    elems.push(quadtree::Element::new(
-        340.0,
-        69.0,
-        50.0,
-        50.0,
-        "elem3".to_string(),
-    ));
-    elems.push(quadtree::Element::new(
-        50.0,
-        40.0,
-        50.0,
-        50.0,
-        "elem4".to_string(),
-    ));
-    elems.push(quadtree::Element::new(
-        109.0,
-        40.0,
-        50.0,
-        50.0,
-        "elem5".to_string(),
-    ));
-    elems.push(quadtree::Element::new(
-        90.0,
-        150.0,
-        50.0,
-        50.0,
-        "elem6".to_string(),
-    ));
+    let mut elems: Vec<objects::Rectangle> = Vec::new();
+    elems.push(
+        objects::RectangleBuilder::new()
+            .coordinate(350.0, 10.0)
+            .size(50.0, 50.0)
+            .name("box 1")
+            .build(),
+    );
+    elems.push(
+        objects::RectangleBuilder::new()
+            .coordinate(400.0, 400.0)
+            .size(50.0, 50.0)
+            .name("box 2")
+            .build(),
+    );
+    elems.push(
+        objects::RectangleBuilder::new()
+            .coordinate(50.0, 100.0)
+            .size(70.0, 70.0)
+            .name("box 3")
+            .build(),
+    );
 
-    let mut move_elem = quadtree::Element::new(0.0, 0.0, 40.0, 40.0, "move_elem".to_string());
-    move_elem.set_color(Color::BURLYWOOD);
+    let mut move_elem = objects::CircleBuilder::new()
+        .coordinate(0.0, 0.0)
+        .radius(50.0)
+        .name("elem")
+        .color(Color::RED)
+        .build();
     for n in elems.iter() {
         tree.add(n.clone());
     }
@@ -247,31 +168,8 @@ fn main() {
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::WHITE);
-        for n in ret.iter() {
-            match n {
-                Some(x) => {
-                    d.draw_rectangle_lines(
-                        x.x as i32,
-                        x.y as i32,
-                        x.width as i32,
-                        x.height as i32,
-                        Color::REBECCAPURPLE,
-                    );
-                }
-                None => {}
-            }
-        }
-        let m_pos = d.get_mouse_position();
-        move_elem.set_coordinate(m_pos);
-        let ret = tree.query(&move_elem);
-        if !ret.is_empty() {
-            for n in ret.iter() {
-                println!("{}", n);
-            }
-        } else {
-            println!("Empty!");
-        }
-
+        move_elem.set_coordinate(d.get_mouse_position());
+        tree.query(&move_elem);
         move_elem.draw(&mut d);
         tree.draw_tree(&mut d);
         //model.process();
