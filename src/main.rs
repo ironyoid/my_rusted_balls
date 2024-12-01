@@ -1,4 +1,6 @@
 #![allow(dead_code, unused_variables)]
+#![feature(extract_if)]
+use quadtree::Element;
 use raylib::prelude::*;
 use std::time::SystemTime;
 mod quadtree;
@@ -164,36 +166,123 @@ fn main() {
     const WINDOW_WIDTH: u32 = 640;
     const WINDOW_HEIGHT: u32 = 480;
     const MODEL_PERIOD: f64 = 0.01;
-    let tree = quadtree::QuadTree::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32);
+    let mut tree = quadtree::QuadTree::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32);
+    let mut elems: Vec<Element> = Vec::new();
+    elems.push(quadtree::Element::new(
+        350.0,
+        10.0,
+        20.0,
+        20.0,
+        "elem1".to_string(),
+    ));
+    elems.push(quadtree::Element::new(
+        410.0,
+        9.0,
+        20.0,
+        20.0,
+        "elem2".to_string(),
+    ));
+    elems.push(quadtree::Element::new(
+        350.0,
+        80.0,
+        20.0,
+        20.0,
+        "elem3".to_string(),
+    ));
+    elems.push(quadtree::Element::new(
+        50.0,
+        40.0,
+        50.0,
+        50.0,
+        "elem4".to_string(),
+    ));
+    elems.push(quadtree::Element::new(
+        109.0,
+        40.0,
+        50.0,
+        50.0,
+        "elem5".to_string(),
+    ));
+    elems.push(quadtree::Element::new(
+        90.0,
+        150.0,
+        50.0,
+        50.0,
+        "elem6".to_string(),
+    ));
+    // elems.push(quadtree::Element::new(
+    //     530.0,
+    //     100.0,
+    //     50.0,
+    //     50.0,
+    //     "elem4".to_string(),
+    // ));
+    // elems.push(quadtree::Element::new(
+    //     530.0,
+    //     160.0,
+    //     50.0,
+    //     50.0,
+    //     "elem5".to_string(),
+    // ));
+    for n in elems.iter() {
+        tree.add(n.clone());
+    }
+    tree.print();
+    let ret = tree.get_boxes();
+
     let (mut rl, thread) = raylib::init()
         .size(WINDOW_WIDTH as i32, WINDOW_HEIGHT as i32)
         .title("Bouncing Balls")
         .build();
-    let ball1 = BallBuilder::new()
-        .pos(20 as f32, (WINDOW_HEIGHT / 2) as f32)
-        .radius(20.0)
-        .acel(9000.0, G)
-        .build();
+    // let ball1 = BallBuilder::new()
+    //     .pos(20 as f32, (WINDOW_HEIGHT / 2) as f32)
+    //     .radius(20.0)
+    //     .acel(9000.0, G)
+    //     .build();
 
-    let ball2 = BallBuilder::new()
-        .pos(WINDOW_WIDTH as f32 - 50.0, (WINDOW_HEIGHT / 2) as f32)
-        .radius(40.0)
-        .acel(20000.0, G)
-        .color(Color::BLUE)
-        .build();
+    // let ball2 = BallBuilder::new()
+    //     .pos(WINDOW_WIDTH as f32 - 50.0, (WINDOW_HEIGHT / 2) as f32)
+    //     .radius(40.0)
+    //     .acel(20000.0, G)
+    //     .color(Color::BLUE)
+    //     .build();
 
-    let mut model = Model {
-        width: WINDOW_WIDTH,
-        height: WINDOW_HEIGHT,
-        period: MODEL_PERIOD,
-        last_time: get_time_s(),
-        objects: vec![Box::new(ball1), Box::new(ball2)],
-    };
-    let mouse_vec = rl.get_mouse_position();
+    // let mut model = Model {
+    //     width: WINDOW_WIDTH,
+    //     height: WINDOW_HEIGHT,
+    //     period: MODEL_PERIOD,
+    //     last_time: get_time_s(),
+    //     objects: vec![Box::new(ball1), Box::new(ball2)],
+    // };
+    // let mouse_vec = rl.get_mouse_position();
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::WHITE);
-        model.process();
-        model.draw(&mut d);
+        for n in ret.iter() {
+            match n {
+                Some(x) => {
+                    d.draw_rectangle_lines(
+                        x.x as i32,
+                        x.y as i32,
+                        x.width as i32,
+                        x.height as i32,
+                        Color::REBECCAPURPLE,
+                    );
+                }
+                None => {}
+            }
+        }
+        for x in elems.iter() {
+            d.draw_text(&x.name, x.x as i32, x.y as i32, 5, Color::BLACK);
+            d.draw_rectangle_lines(
+                x.x as i32,
+                x.y as i32,
+                x.width as i32,
+                x.height as i32,
+                Color::RED,
+            );
+        }
+        //model.process();
+        //model.draw(&mut d);
     }
 }
