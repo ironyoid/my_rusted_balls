@@ -1,8 +1,15 @@
-use raylib::prelude::Vector2;
+use raylib::{
+    color::Color,
+    ffi::Rectangle,
+    prelude::{RaylibDraw, RaylibDrawHandle, Vector2},
+};
 use std::collections::VecDeque;
 
 pub trait ElementTrait: Clone + std::fmt::Display {
     fn get_box(&self) -> QuadBox;
+    fn set_color(&mut self, color: Color);
+    fn draw(&self, draw_handler: &mut RaylibDrawHandle);
+    fn set_coordinate(&mut self, new_vec: Vector2);
 }
 #[derive(Clone)]
 pub struct Element {
@@ -11,6 +18,7 @@ pub struct Element {
     pub width: f32,
     pub height: f32,
     pub name: String,
+    pub color: Color,
 }
 
 impl std::fmt::Display for Element {
@@ -27,6 +35,30 @@ impl ElementTrait for Element {
     fn get_box(&self) -> QuadBox {
         QuadBox::new(self.x, self.y, self.width, self.height)
     }
+    fn set_color(&mut self, color: Color) {
+        self.color = color;
+    }
+    fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
+        draw_handler.draw_text(&self.name, self.x as i32, self.y as i32, 5, Color::BLACK);
+        let rec = Rectangle {
+            x: self.x,
+            y: self.y,
+            width: self.width,
+            height: self.height,
+        };
+        draw_handler.draw_rectangle_lines_ex(rec, 3.0, self.color);
+        // draw_handler.draw_rectangle_lines_ex(
+        //     self.x as i32,
+        //     self.y as i32,
+        //     self.width as i32,
+        //     self.height as i32,
+        //     self.color,
+        // );
+    }
+    fn set_coordinate(&mut self, new_vec: Vector2) {
+        self.x = new_vec.x;
+        self.y = new_vec.y;
+    }
 }
 
 impl Element {
@@ -37,6 +69,7 @@ impl Element {
             width: width,
             height: height,
             name: name,
+            color: Color::BLUE,
         }
     }
 }
@@ -99,6 +132,20 @@ impl QuadBox {
             y: self.height,
         }
     }
+
+    fn contains(&self, u_box: &QuadBox) -> bool {
+        u_box.x >= self.x
+            && u_box.get_right_x() <= self.get_right_x()
+            && u_box.y >= self.y
+            && u_box.get_bottom_y() <= self.get_bottom_y()
+    }
+
+    fn intersects(&self, u_box: &QuadBox) -> bool {
+        !(self.x >= u_box.get_right_x()
+            || self.get_right_x() <= u_box.x
+            || self.y >= u_box.get_bottom_y()
+            || self.get_bottom_y() <= u_box.y)
+    }
 }
 
 struct Node<T: ElementTrait> {
@@ -144,6 +191,21 @@ impl<T: ElementTrait> std::fmt::Display for Node<T> {
 impl<T: ElementTrait> Subtree<T> {
     fn new() -> Self {
         Self(None)
+    }
+
+    fn draw_tree(&mut self, draw_handler: &mut RaylibDrawHandle) {
+        match &mut self.0 {
+            Some(x) => {
+                for val in x.values.iter_mut() {
+                    val.draw(draw_handler);
+                    val.set_color(Color::BLUE);
+                }
+                for (idx, elem) in x.children.iter_mut().enumerate() {
+                    elem.draw_tree(draw_handler);
+                }
+            }
+            None => {}
+        }
     }
 
     fn get_boxes(&mut self, init_box: &QuadBox, boxes: &mut Vec<Option<QuadBox>>) {
@@ -300,6 +362,30 @@ impl<T: ElementTrait> Subtree<T> {
             _ => None,
         }
     }
+
+    fn query(&mut self, init_box: &QuadBox, u_box: &QuadBox, ret_elems: &mut Vec<T>) {
+        if let Some(x) = &mut self.0 {
+            for n in x.values.iter_mut() {
+                if u_box.intersects(&n.get_box()) {
+                    ret_elems.push(*n.clone());
+                    n.set_color(Color::RED);
+                } else {
+                    //n.set_color(Color::BLUE);
+                }
+            }
+
+            for (idx, n) in x.children.iter_mut().enumerate() {
+                if let Some(x) = &n.0 {
+                    let child_box = Self::compute_box(init_box, idx as i32);
+                    if let Some(y) = child_box {
+                        if u_box.intersects(&y) {
+                            n.query(&y, u_box, ret_elems);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<T: ElementTrait> QuadTree<T> {
@@ -323,6 +409,14 @@ impl<T: ElementTrait> QuadTree<T> {
     pub fn get_boxes(&mut self) -> Vec<Option<QuadBox>> {
         let mut ret: Vec<Option<QuadBox>> = Vec::new();
         self.root.get_boxes(&self.u_box, &mut ret);
+        ret
+    }
+    pub fn draw_tree(&mut self, draw_handler: &mut RaylibDrawHandle) {
+        self.root.draw_tree(draw_handler);
+    }
+    pub fn query(&mut self, elem: &T) -> Vec<T> {
+        let mut ret: Vec<T> = Vec::new();
+        self.root.query(&self.u_box, &elem.get_box(), &mut ret);
         ret
     }
 }

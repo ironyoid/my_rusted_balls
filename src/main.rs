@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_variables)]
 #![feature(extract_if)]
-use quadtree::Element;
+use quadtree::{Element, ElementTrait};
 use raylib::prelude::*;
 use std::time::SystemTime;
 mod quadtree;
@@ -171,22 +171,22 @@ fn main() {
     elems.push(quadtree::Element::new(
         350.0,
         10.0,
-        20.0,
-        20.0,
+        50.0,
+        50.0,
         "elem1".to_string(),
     ));
     elems.push(quadtree::Element::new(
         410.0,
         9.0,
-        20.0,
-        20.0,
+        50.0,
+        50.0,
         "elem2".to_string(),
     ));
     elems.push(quadtree::Element::new(
-        350.0,
-        80.0,
-        20.0,
-        20.0,
+        340.0,
+        69.0,
+        50.0,
+        50.0,
         "elem3".to_string(),
     ));
     elems.push(quadtree::Element::new(
@@ -210,20 +210,9 @@ fn main() {
         50.0,
         "elem6".to_string(),
     ));
-    // elems.push(quadtree::Element::new(
-    //     530.0,
-    //     100.0,
-    //     50.0,
-    //     50.0,
-    //     "elem4".to_string(),
-    // ));
-    // elems.push(quadtree::Element::new(
-    //     530.0,
-    //     160.0,
-    //     50.0,
-    //     50.0,
-    //     "elem5".to_string(),
-    // ));
+
+    let mut move_elem = quadtree::Element::new(0.0, 0.0, 40.0, 40.0, "move_elem".to_string());
+    move_elem.set_color(Color::BURLYWOOD);
     for n in elems.iter() {
         tree.add(n.clone());
     }
@@ -272,16 +261,19 @@ fn main() {
                 None => {}
             }
         }
-        for x in elems.iter() {
-            d.draw_text(&x.name, x.x as i32, x.y as i32, 5, Color::BLACK);
-            d.draw_rectangle_lines(
-                x.x as i32,
-                x.y as i32,
-                x.width as i32,
-                x.height as i32,
-                Color::RED,
-            );
+        let m_pos = d.get_mouse_position();
+        move_elem.set_coordinate(m_pos);
+        let ret = tree.query(&move_elem);
+        if !ret.is_empty() {
+            for n in ret.iter() {
+                println!("{}", n);
+            }
+        } else {
+            println!("Empty!");
         }
+
+        move_elem.draw(&mut d);
+        tree.draw_tree(&mut d);
         //model.process();
         //model.draw(&mut d);
     }
