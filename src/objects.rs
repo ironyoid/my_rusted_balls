@@ -101,6 +101,10 @@ impl quadtree::ObjectTrait for Rectangle {
         self.x = new_vec.x;
         self.y = new_vec.y;
     }
+    fn update_coordinate(&mut self, new_vec: Vector2) {
+        self.x += new_vec.x;
+        self.y += new_vec.y;
+    }
 }
 
 #[derive(Clone)]
@@ -215,5 +219,9 @@ impl quadtree::ObjectTrait for Circle {
     fn set_coordinate(&mut self, new_vec: Vector2) {
         self.current.x = new_vec.x;
         self.current.y = new_vec.y;
+    }
+    fn update_coordinate(&mut self, new_vec: Vector2) {
+        self.current.x += new_vec.x;
+        self.current.y += new_vec.y;
     }
 }

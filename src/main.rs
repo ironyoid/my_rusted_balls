@@ -172,7 +172,12 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::WHITE);
         move_elem.set_coordinate(d.get_mouse_position());
-        tree.query(&move_elem);
+        let pen = tree.query(&move_elem, &mut d);
+        for n in pen.iter() {
+            println!("[{},{}]", n.x, n.y);
+            move_elem.update_coordinate(*n);
+        }
+        println!();
         move_elem.draw(&mut d);
         tree.draw_tree(&mut d);
         //model.process();
