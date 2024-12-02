@@ -1,24 +1,24 @@
+use dyn_clone::DynClone;
 use raylib::{
     color::Color,
     prelude::{RaylibDrawHandle, Vector2},
 };
 use std::collections::VecDeque;
-
-pub trait ObjectTrait: Clone + std::fmt::Display {
+pub trait ObjectTrait: std::fmt::Display + DynClone {
     fn get_box(&self) -> QuadBox;
     fn set_color(&mut self, color: Color);
     fn draw(&self, draw_handler: &mut RaylibDrawHandle);
     fn set_coordinate(&mut self, new_vec: Vector2);
 }
 
-pub struct QuadTree<T: ObjectTrait> {
-    root: Subtree<T>,
+pub struct QuadTree {
+    root: Subtree,
     u_box: QuadBox,
     max_depth: u32,
     max_num_of_elems: usize,
 }
 
-struct Subtree<T: ObjectTrait>(Option<Box<Node<T>>>);
+struct Subtree(Option<Box<Node>>);
 
 #[derive(Clone)]
 pub struct QuadBox {
@@ -85,12 +85,12 @@ impl QuadBox {
     }
 }
 
-struct Node<T: ObjectTrait> {
-    values: Vec<Box<T>>,
-    children: [Subtree<T>; 4],
+struct Node {
+    values: Vec<Box<dyn ObjectTrait>>,
+    children: [Subtree; 4],
 }
 
-impl<T: ObjectTrait> Node<T> {
+impl Node {
     fn new() -> Self {
         Self {
             values: Vec::new(),
@@ -102,8 +102,8 @@ impl<T: ObjectTrait> Node<T> {
             ],
         }
     }
-    fn get_vec_of_refs(&self) -> Vec<&Subtree<T>> {
-        let mut vc: Vec<&Subtree<T>> = Vec::new();
+    fn get_vec_of_refs(&self) -> Vec<&Subtree> {
+        let mut vc: Vec<&Subtree> = Vec::new();
         for n in self.children.iter() {
             vc.push(n);
         }
@@ -111,7 +111,7 @@ impl<T: ObjectTrait> Node<T> {
     }
 }
 
-impl<T: ObjectTrait> std::fmt::Display for Node<T> {
+impl std::fmt::Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if write!(f, "[") == Ok(()) {
             for n in self.values.iter() {
@@ -125,7 +125,17 @@ impl<T: ObjectTrait> std::fmt::Display for Node<T> {
     }
 }
 
-impl<T: ObjectTrait> Subtree<T> {
+trait MyTrait: DynClone {
+    fn recite(&self);
+}
+
+impl MyTrait for String {
+    fn recite(&self) {
+        println!("{} ♫", self);
+    }
+}
+
+impl Subtree {
     fn new() -> Self {
         Self(None)
     }
@@ -159,7 +169,7 @@ impl<T: ObjectTrait> Subtree<T> {
     }
 
     fn print_tree(&mut self) {
-        let mut queue: VecDeque<Vec<&Subtree<T>>> = VecDeque::new();
+        let mut queue: VecDeque<Vec<&Subtree>> = VecDeque::new();
         let mut level: u32 = 0;
         match &self.0 {
             Some(x) => {
@@ -171,7 +181,7 @@ impl<T: ObjectTrait> Subtree<T> {
         println!("root: {}", self.0.as_ref().unwrap());
 
         while !queue.is_empty() {
-            let mut vc: Vec<&Subtree<T>> = Vec::new();
+            let mut vc: Vec<&Subtree> = Vec::new();
             let tmp = queue.pop_front().unwrap();
             print!("{} level_{}: ", tmp.len(), level);
 
@@ -193,12 +203,19 @@ impl<T: ObjectTrait> Subtree<T> {
         }
     }
 
-    fn add(&mut self, depth: u32, u_box: &QuadBox, elem: T, max_depth: u32, max_num: usize) {
+    fn add(
+        &mut self,
+        depth: u32,
+        u_box: &QuadBox,
+        elem: &Box<dyn ObjectTrait>,
+        max_depth: u32,
+        max_num: usize,
+    ) {
         match &mut self.0 {
             Some(x) => {
                 if x.children[0].0.is_none() {
                     if depth >= max_depth || x.values.len() < max_num {
-                        x.values.push(Box::new(elem));
+                        x.values.push(dyn_clone::clone_box(&**elem));
                     } else {
                         Self::split(x, &u_box, &elem);
                         self.add(depth, u_box, elem, max_depth, max_num);
@@ -214,7 +231,7 @@ impl<T: ObjectTrait> Subtree<T> {
                             None => println!("Compute box is None!"),
                         }
                     } else {
-                        x.values.push(Box::new(elem));
+                        x.values.push(dyn_clone::clone_box(&**elem));
                     }
                 }
             }
@@ -226,7 +243,7 @@ impl<T: ObjectTrait> Subtree<T> {
         }
     }
 
-    fn split(node: &mut Box<Node<T>>, u_box: &QuadBox, elem: &T) {
+    fn split(node: &mut Box<Node>, u_box: &QuadBox, elem: &Box<dyn ObjectTrait>) {
         for n in node.children.iter_mut() {
             n.0 = Some(Box::new(Node::new()));
         }
@@ -246,7 +263,7 @@ impl<T: ObjectTrait> Subtree<T> {
         }
     }
 
-    fn get_quadrant(node_box: &QuadBox, elem: &T) -> i32 {
+    fn get_quadrant(node_box: &QuadBox, elem: &Box<dyn ObjectTrait>) -> i32 {
         let center = node_box.get_center();
         let elem_box = elem.get_box();
         if elem_box.get_right_x() < center.x {
@@ -300,11 +317,16 @@ impl<T: ObjectTrait> Subtree<T> {
         }
     }
 
-    fn query(&mut self, init_box: &QuadBox, u_box: &QuadBox, ret_elems: &mut Vec<T>) {
+    fn query(
+        &mut self,
+        init_box: &QuadBox,
+        u_box: &QuadBox,
+        ret_elems: &mut Vec<Box<dyn ObjectTrait>>,
+    ) {
         if let Some(x) = &mut self.0 {
             for n in x.values.iter_mut() {
                 if u_box.intersects(&n.get_box()) {
-                    ret_elems.push(*n.clone());
+                    ret_elems.push(dyn_clone::clone_box(&**n));
                     n.set_color(Color::RED);
                 }
             }
@@ -323,7 +345,7 @@ impl<T: ObjectTrait> Subtree<T> {
     }
 }
 
-impl<T: ObjectTrait> QuadTree<T> {
+impl QuadTree {
     const MAX_DEPTH: u32 = 16;
     const MAX_NUM_OF_ELEMS: usize = 2;
     pub fn new(width: f32, height: f32) -> Self {
@@ -334,7 +356,7 @@ impl<T: ObjectTrait> QuadTree<T> {
             max_num_of_elems: Self::MAX_NUM_OF_ELEMS,
         }
     }
-    pub fn add(&mut self, elem: T) {
+    pub fn add(&mut self, elem: &Box<dyn ObjectTrait>) {
         self.root
             .add(0, &self.u_box, elem, self.max_depth, self.max_num_of_elems);
     }
@@ -349,8 +371,8 @@ impl<T: ObjectTrait> QuadTree<T> {
     pub fn draw_tree(&mut self, draw_handler: &mut RaylibDrawHandle) {
         self.root.draw_tree(draw_handler);
     }
-    pub fn query<E: ObjectTrait>(&mut self, elem: &E) -> Vec<T> {
-        let mut ret: Vec<T> = Vec::new();
+    pub fn query(&mut self, elem: &Box<dyn ObjectTrait>) -> Vec<Box<dyn ObjectTrait>> {
+        let mut ret: Vec<Box<dyn ObjectTrait>> = Vec::new();
         self.root.query(&self.u_box, &elem.get_box(), &mut ret);
         ret
     }

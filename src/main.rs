@@ -105,37 +105,40 @@ fn main() {
     const WINDOW_HEIGHT: u32 = 480;
     const MODEL_PERIOD: f64 = 0.01;
     let mut tree = quadtree::QuadTree::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32);
-    let mut elems: Vec<objects::Rectangle> = Vec::new();
-    elems.push(
+    let mut elems: Vec<Box<dyn ObjectTrait>> = Vec::new();
+    elems.push(Box::new(
         objects::RectangleBuilder::new()
             .coordinate(350.0, 10.0)
             .size(50.0, 50.0)
             .name("box 1")
             .build(),
-    );
-    elems.push(
+    ));
+    elems.push(Box::new(
         objects::RectangleBuilder::new()
             .coordinate(400.0, 400.0)
             .size(50.0, 50.0)
             .name("box 2")
             .build(),
-    );
-    elems.push(
+    ));
+    elems.push(Box::new(
         objects::RectangleBuilder::new()
             .coordinate(50.0, 100.0)
             .size(70.0, 70.0)
             .name("box 3")
             .build(),
+    ));
+
+    let mut move_elem: Box<dyn ObjectTrait> = Box::new(
+        objects::CircleBuilder::new()
+            .coordinate(0.0, 0.0)
+            .radius(50.0)
+            .name("elem")
+            .color(Color::RED)
+            .build(),
     );
 
-    let mut move_elem = objects::CircleBuilder::new()
-        .coordinate(0.0, 0.0)
-        .radius(50.0)
-        .name("elem")
-        .color(Color::RED)
-        .build();
     for n in elems.iter() {
-        tree.add(n.clone());
+        tree.add(n);
     }
     tree.print();
     let ret = tree.get_boxes();

@@ -1,7 +1,8 @@
 [package]
-name = "rust_first_app"
+name = "my_rusted_balls"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+dyn-clone = "1.0.17"
 raylib = { version = "5.0" }
