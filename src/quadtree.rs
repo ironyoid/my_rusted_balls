@@ -3,7 +3,7 @@ use core::f32;
 use raylib::{
     color::Color,
     math::Rectangle,
-    prelude::{RaylibDraw, RaylibDrawHandle, Vector2},
+    prelude::{RaylibDrawHandle, Vector2},
 };
 use std::collections::VecDeque;
 pub struct QuadTree {
@@ -17,10 +17,10 @@ struct Subtree(Option<Box<Node>>);
 
 #[derive(Clone)]
 pub struct QuadBox {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
 }
 
 impl std::fmt::Display for QuadBox {
@@ -43,30 +43,37 @@ impl QuadBox {
         }
     }
 
-    fn get_center(&self) -> Vector2 {
+    pub fn get_center(&self) -> Vector2 {
         Vector2 {
             x: self.x + self.width / 2.0,
             y: self.y + self.height / 2.0,
         }
     }
 
-    fn get_right_x(&self) -> f32 {
+    pub fn get_lefttop(&self) -> Vector2 {
+        Vector2 {
+            x: self.x,
+            y: self.y,
+        }
+    }
+
+    pub fn get_right_x(&self) -> f32 {
         self.x + self.width
     }
 
-    fn set_right_x(&mut self, x: f32) {
+    pub fn set_right_x(&mut self, x: f32) {
         self.width = self.x - x;
     }
 
-    fn get_bottom_y(&self) -> f32 {
+    pub fn get_bottom_y(&self) -> f32 {
         self.y + self.height
     }
 
-    fn set_bottom_y(&mut self, y: f32) {
+    pub fn set_bottom_y(&mut self, y: f32) {
         self.height = self.y - y;
     }
 
-    fn get_size(&self) -> Vector2 {
+    pub fn get_size(&self) -> Vector2 {
         Vector2 {
             x: self.width,
             y: self.height,
@@ -97,7 +104,7 @@ impl QuadBox {
         ret
     }
 
-    fn pen_vector(&self, u_box: &QuadBox, md: &Rectangle) -> Vector2 {
+    fn pen_vector(&self, u_box: &QuadBox, md: &Rectangle) -> Option<Vector2> {
         let mut vec = Vector2 { x: 0.0, y: 0.0 };
         let mut min = f32::MAX;
         if md.x.abs() < min {
@@ -120,7 +127,12 @@ impl QuadBox {
             vec.x = 0.0;
             vec.y = md.y + md.height;
         }
-        -vec
+
+        if vec.x != 0.0 || vec.y != 0.0 {
+            return Some(-vec);
+        } else {
+            None
+        }
     }
 }
 
@@ -345,17 +357,11 @@ impl Subtree {
         }
     }
 
-    fn query(
-        &mut self,
-        init_box: &QuadBox,
-        u_box: &QuadBox,
-        ret_elems: &mut Vec<Vector2>,
-        draw_handler: &mut RaylibDrawHandle,
-    ) {
+    fn query(&mut self, init_box: &QuadBox, u_box: &QuadBox, ret_elems: &mut Vec<Option<Vector2>>) {
         if let Some(x) = &mut self.0 {
             for n in x.values.iter_mut() {
                 let bx = u_box.minkowski_difference(&n.get_box());
-                draw_handler.draw_rectangle_lines_ex(bx, 5.0, Color::GREEN);
+                //draw_handler.draw_rectangle_lines_ex(bx, 5.0, Color::GREEN);
                 if u_box.intersects(&n.get_box()) {
                     ret_elems.push(u_box.pen_vector(&n.get_box(), &bx));
                     n.set_color(Color::RED);
@@ -367,7 +373,7 @@ impl Subtree {
                     let child_box = Self::compute_box(init_box, idx as i32);
                     if let Some(y) = child_box {
                         if u_box.intersects(&y) {
-                            n.query(&y, u_box, ret_elems, draw_handler);
+                            n.query(&y, u_box, ret_elems);
                         }
                     }
                 }
@@ -402,14 +408,9 @@ impl QuadTree {
     pub fn draw_tree(&mut self, draw_handler: &mut RaylibDrawHandle) {
         self.root.draw_tree(draw_handler);
     }
-    pub fn query(
-        &mut self,
-        elem: &Box<dyn objects::ObjectTrait>,
-        draw_handler: &mut RaylibDrawHandle,
-    ) -> Vec<Vector2> {
-        let mut ret: Vec<Vector2> = Vec::new();
-        self.root
-            .query(&self.u_box, &elem.get_box(), &mut ret, draw_handler);
+    pub fn query(&mut self, elem: &Box<dyn objects::ObjectTrait>) -> Vec<Option<Vector2>> {
+        let mut ret: Vec<Option<Vector2>> = Vec::new();
+        self.root.query(&self.u_box, &elem.get_box(), &mut ret);
         ret
     }
 }

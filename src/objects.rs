@@ -6,47 +6,58 @@ use raylib::{
 };
 
 pub trait ObjectTrait: std::fmt::Display + DynClone {
-    fn get_box(&self) -> quadtree::QuadBox;
     fn draw(&self, draw_handler: &mut RaylibDrawHandle);
+
     fn set_coordinate(&mut self, new_vec: Vector2);
     fn set_color(&mut self, color: Color);
     fn set_speed(&mut self, speed: Vector2);
     fn set_acel(&mut self, acel: Vector2);
+
     fn update_coordinate(&mut self, new_vec: Vector2);
+    fn update_speed(&mut self, speed: Vector2);
+    fn update_acel(&mut self, acel: Vector2);
+
+    fn get_box(&self) -> quadtree::QuadBox;
+    fn get_coordinate(&self) -> Vector2;
+    fn get_speed(&self) -> Vector2;
+    fn get_acel(&self) -> Vector2;
 }
 #[derive(Clone)]
 pub struct Rectangle {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-    pub name: String,
-    pub color: Color,
+    coordinate: Vector2,
+    width: f32,
+    height: f32,
+    speed: Vector2,
+    acel: Vector2,
+    name: String,
+    color: Color,
 }
 
 pub struct RectangleBuilder {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-    pub name: String,
-    pub color: Color,
+    coordinate: Vector2,
+    width: f32,
+    height: f32,
+    speed: Vector2,
+    acel: Vector2,
+    name: String,
+    color: Color,
 }
 
 impl RectangleBuilder {
     pub fn new() -> RectangleBuilder {
         RectangleBuilder {
-            x: 0.0,
-            y: 0.0,
+            coordinate: Vector2 { x: 0.0, y: 0.0 },
             width: 0.0,
             height: 0.0,
+            speed: Vector2 { x: 0.0, y: 0.0 },
+            acel: Vector2 { x: 0.0, y: 0.0 },
             name: String::from("Object"),
             color: Color::BLACK,
         }
     }
     pub fn coordinate(mut self, x: f32, y: f32) -> RectangleBuilder {
-        self.x = x;
-        self.y = y;
+        self.coordinate.x = x;
+        self.coordinate.y = y;
         self
     }
     pub fn size(mut self, width: f32, height: f32) -> RectangleBuilder {
@@ -62,12 +73,22 @@ impl RectangleBuilder {
         self.color = color;
         self
     }
+    pub fn speed(mut self, speed: Vector2) -> RectangleBuilder {
+        self.speed = speed;
+        self
+    }
+    pub fn acel(mut self, acel: Vector2) -> RectangleBuilder {
+        self.acel = acel;
+        self
+    }
+
     pub fn build(self) -> Rectangle {
         Rectangle {
-            x: self.x,
-            y: self.y,
+            coordinate: self.coordinate,
             width: self.width,
             height: self.height,
+            speed: self.speed,
+            acel: self.acel,
             name: self.name,
             color: self.color,
         }
@@ -79,48 +100,76 @@ impl std::fmt::Display for Rectangle {
         write!(
             f,
             "({}:[{}, {}, {}, {}])",
-            self.name, self.x, self.y, self.width, self.height
+            self.name, self.coordinate.x, self.coordinate.y, self.width, self.height
         )
     }
 }
 
 impl ObjectTrait for Rectangle {
-    fn get_box(&self) -> quadtree::QuadBox {
-        quadtree::QuadBox::new(self.x, self.y, self.width, self.height)
-    }
-    fn set_color(&mut self, color: Color) {
-        self.color = color;
-    }
     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
         draw_handler.draw_text(
             &self.name,
-            self.x as i32 + 5,
-            self.y as i32 + 5,
+            self.coordinate.x as i32 + 5,
+            self.coordinate.y as i32 + 5,
             7,
             Color::BLACK,
         );
         let rec = raylib::prelude::Rectangle {
-            x: self.x,
-            y: self.y,
+            x: self.coordinate.x,
+            y: self.coordinate.y,
             width: self.width,
             height: self.height,
         };
         draw_handler.draw_rectangle_lines_ex(rec, 3.0, self.color);
     }
-    fn set_coordinate(&mut self, new_vec: Vector2) {
-        self.x = new_vec.x;
-        self.y = new_vec.y;
+
+    fn set_color(&mut self, color: Color) {
+        self.color = color;
     }
+    fn set_coordinate(&mut self, new_vec: Vector2) {
+        self.coordinate.x = new_vec.x;
+        self.coordinate.y = new_vec.y;
+    }
+    fn set_acel(&mut self, acel: Vector2) {
+        self.acel = acel;
+    }
+    fn set_speed(&mut self, speed: Vector2) {
+        self.speed = speed;
+    }
+
     fn update_coordinate(&mut self, new_vec: Vector2) {
-        self.x += new_vec.x;
-        self.y += new_vec.y;
+        self.coordinate.x += new_vec.x;
+        self.coordinate.y += new_vec.y;
+    }
+    fn update_acel(&mut self, acel: Vector2) {
+        self.acel += acel;
+    }
+    fn update_speed(&mut self, speed: Vector2) {
+        self.speed += speed;
+    }
+
+    fn get_box(&self) -> quadtree::QuadBox {
+        quadtree::QuadBox::new(
+            self.coordinate.x,
+            self.coordinate.y,
+            self.width,
+            self.height,
+        )
+    }
+    fn get_acel(&self) -> Vector2 {
+        self.acel
+    }
+    fn get_coordinate(&self) -> Vector2 {
+        self.coordinate
+    }
+    fn get_speed(&self) -> Vector2 {
+        self.speed
     }
 }
 
 #[derive(Clone)]
 pub struct Circle {
-    pub init: Vector2,
-    pub current: Vector2,
+    pub coordinate: Vector2,
     pub acel: Vector2,
     pub speed: Vector2,
     pub radius: f32,
@@ -128,19 +177,17 @@ pub struct Circle {
     name: String,
 }
 pub struct CircleBuilder {
-    pub init: Vector2,
-    pub current: Vector2,
+    pub coordinate: Vector2,
     pub acel: Vector2,
     pub speed: Vector2,
     pub radius: f32,
     pub color: Color,
-    pub name: String,
+    name: String,
 }
 impl CircleBuilder {
     pub fn new() -> CircleBuilder {
         CircleBuilder {
-            init: Vector2 { x: 0.0, y: 0.0 },
-            current: Vector2 { x: 0.0, y: 0.0 },
+            coordinate: Vector2 { x: 0.0, y: 0.0 },
             acel: Vector2 { x: 0.0, y: 0.0 },
             speed: Vector2 { x: 0.0, y: 0.0 },
             radius: 0.0,
@@ -149,23 +196,20 @@ impl CircleBuilder {
         }
     }
     pub fn coordinate(mut self, x: f32, y: f32) -> CircleBuilder {
-        self.init.x = x;
-        self.init.y = y;
-        self.current = self.init;
+        self.coordinate.x = x;
+        self.coordinate.y = y;
         self
     }
     pub fn name(mut self, name: &str) -> CircleBuilder {
         self.name = name.to_string();
         self
     }
-    pub fn acel(mut self, x: f32, y: f32) -> CircleBuilder {
-        self.acel.x = x;
-        self.acel.y = y;
+    pub fn acel(mut self, acel: Vector2) -> CircleBuilder {
+        self.acel = acel;
         self
     }
-    pub fn speed(mut self, x: f32, y: f32) -> CircleBuilder {
-        self.speed.x = x;
-        self.speed.y = y;
+    pub fn speed(mut self, speed: Vector2) -> CircleBuilder {
+        self.speed = speed;
         self
     }
     pub fn radius(mut self, radius: f32) -> CircleBuilder {
@@ -178,8 +222,7 @@ impl CircleBuilder {
     }
     pub fn build(self) -> Circle {
         Circle {
-            init: self.init,
-            current: self.current,
+            coordinate: self.coordinate,
             acel: self.acel,
             speed: self.speed,
             radius: self.radius,
@@ -194,44 +237,68 @@ impl std::fmt::Display for Circle {
         write!(
             f,
             "([{}, {}, {}]])",
-            self.current.x, self.current.y, self.radius
+            self.coordinate.x, self.coordinate.y, self.radius
         )
     }
 }
 
 impl ObjectTrait for Circle {
-    fn get_box(&self) -> quadtree::QuadBox {
-        quadtree::QuadBox::new(
-            self.current.x - self.radius,
-            self.current.y - self.radius,
-            self.radius * 2.0,
-            self.radius * 2.0,
-        )
-    }
-    fn set_color(&mut self, color: Color) {
-        self.color = color;
-    }
     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
         draw_handler.draw_text(
             &self.name,
-            self.current.x as i32 + 5,
-            self.current.y as i32 + 5,
+            self.coordinate.x as i32 + 5,
+            self.coordinate.y as i32 + 5,
             7,
             Color::BLACK,
         );
         draw_handler.draw_circle(
-            self.current.x as i32,
-            self.current.y as i32,
+            self.coordinate.x as i32,
+            self.coordinate.y as i32,
             self.radius,
             self.color,
         );
     }
+    fn set_color(&mut self, color: Color) {
+        self.color = color;
+    }
     fn set_coordinate(&mut self, new_vec: Vector2) {
-        self.current.x = new_vec.x;
-        self.current.y = new_vec.y;
+        self.coordinate.x = new_vec.x + self.radius;
+        self.coordinate.y = new_vec.y + self.radius;
+    }
+    fn set_acel(&mut self, acel: Vector2) {
+        self.acel = acel;
+    }
+    fn set_speed(&mut self, speed: Vector2) {
+        self.speed = speed;
     }
     fn update_coordinate(&mut self, new_vec: Vector2) {
-        self.current.x += new_vec.x;
-        self.current.y += new_vec.y;
+        self.coordinate.x += new_vec.x;
+        self.coordinate.y += new_vec.y;
+    }
+    fn update_acel(&mut self, acel: Vector2) {
+        self.acel += acel;
+    }
+    fn update_speed(&mut self, speed: Vector2) {
+        self.speed += speed
+    }
+    fn get_box(&self) -> quadtree::QuadBox {
+        quadtree::QuadBox::new(
+            self.coordinate.x - self.radius,
+            self.coordinate.y - self.radius,
+            self.radius * 2.0,
+            self.radius * 2.0,
+        )
+    }
+    fn get_acel(&self) -> Vector2 {
+        self.acel
+    }
+    fn get_coordinate(&self) -> Vector2 {
+        Vector2 {
+            x: self.coordinate.x - self.radius,
+            y: self.coordinate.y - self.radius,
+        }
+    }
+    fn get_speed(&self) -> Vector2 {
+        self.speed
     }
 }
