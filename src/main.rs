@@ -4,6 +4,7 @@ use quadtree::ObjectTrait;
 use raylib::prelude::*;
 use std::time::SystemTime;
 mod objects;
+mod physics;
 mod quadtree;
 trait ProcessObject {
     fn process(&mut self, time: f32, w: u32, h: u32);

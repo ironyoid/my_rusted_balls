@@ -1,9 +1,19 @@
 use super::quadtree;
+use dyn_clone::DynClone;
 use raylib::{
     color::Color,
     prelude::{RaylibDraw, RaylibDrawHandle, Vector2},
 };
 
+pub trait ObjectTrait: std::fmt::Display + DynClone {
+    fn get_box(&self) -> quadtree::QuadBox;
+    fn draw(&self, draw_handler: &mut RaylibDrawHandle);
+    fn set_coordinate(&mut self, new_vec: Vector2);
+    fn set_color(&mut self, color: Color);
+    fn set_speed(&mut self, speed: Vector2);
+    fn set_acel(&mut self, acel: Vector2);
+    fn update_coordinate(&mut self, new_vec: Vector2);
+}
 #[derive(Clone)]
 pub struct Rectangle {
     pub x: f32,
@@ -74,7 +84,7 @@ impl std::fmt::Display for Rectangle {
     }
 }
 
-impl quadtree::ObjectTrait for Rectangle {
+impl ObjectTrait for Rectangle {
     fn get_box(&self) -> quadtree::QuadBox {
         quadtree::QuadBox::new(self.x, self.y, self.width, self.height)
     }
@@ -189,7 +199,7 @@ impl std::fmt::Display for Circle {
     }
 }
 
-impl quadtree::ObjectTrait for Circle {
+impl ObjectTrait for Circle {
     fn get_box(&self) -> quadtree::QuadBox {
         quadtree::QuadBox::new(
             self.current.x - self.radius,

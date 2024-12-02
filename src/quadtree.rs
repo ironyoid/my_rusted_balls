@@ -1,19 +1,11 @@
+use super::objects;
 use core::f32;
-use dyn_clone::DynClone;
 use raylib::{
     color::Color,
     math::Rectangle,
     prelude::{RaylibDraw, RaylibDrawHandle, Vector2},
 };
 use std::collections::VecDeque;
-pub trait ObjectTrait: std::fmt::Display + DynClone {
-    fn get_box(&self) -> QuadBox;
-    fn set_color(&mut self, color: Color);
-    fn draw(&self, draw_handler: &mut RaylibDrawHandle);
-    fn set_coordinate(&mut self, new_vec: Vector2);
-    fn update_coordinate(&mut self, new_vec: Vector2);
-}
-
 pub struct QuadTree {
     root: Subtree,
     u_box: QuadBox,
@@ -133,7 +125,7 @@ impl QuadBox {
 }
 
 struct Node {
-    values: Vec<Box<dyn ObjectTrait>>,
+    values: Vec<Box<dyn objects::ObjectTrait>>,
     children: [Subtree; 4],
 }
 
@@ -244,7 +236,7 @@ impl Subtree {
         &mut self,
         depth: u32,
         u_box: &QuadBox,
-        elem: &Box<dyn ObjectTrait>,
+        elem: &Box<dyn objects::ObjectTrait>,
         max_depth: u32,
         max_num: usize,
     ) {
@@ -279,7 +271,7 @@ impl Subtree {
         }
     }
 
-    fn split(node: &mut Box<Node>, u_box: &QuadBox, elem: &Box<dyn ObjectTrait>) {
+    fn split(node: &mut Box<Node>, u_box: &QuadBox, elem: &Box<dyn objects::ObjectTrait>) {
         for n in node.children.iter_mut() {
             n.0 = Some(Box::new(Node::new()));
         }
@@ -299,7 +291,7 @@ impl Subtree {
         }
     }
 
-    fn get_quadrant(node_box: &QuadBox, elem: &Box<dyn ObjectTrait>) -> i32 {
+    fn get_quadrant(node_box: &QuadBox, elem: &Box<dyn objects::ObjectTrait>) -> i32 {
         let center = node_box.get_center();
         let elem_box = elem.get_box();
         if elem_box.get_right_x() < center.x {
@@ -395,7 +387,7 @@ impl QuadTree {
             max_num_of_elems: Self::MAX_NUM_OF_ELEMS,
         }
     }
-    pub fn add(&mut self, elem: &Box<dyn ObjectTrait>) {
+    pub fn add(&mut self, elem: &Box<dyn objects::ObjectTrait>) {
         self.root
             .add(0, &self.u_box, elem, self.max_depth, self.max_num_of_elems);
     }
@@ -412,7 +404,7 @@ impl QuadTree {
     }
     pub fn query(
         &mut self,
-        elem: &Box<dyn ObjectTrait>,
+        elem: &Box<dyn objects::ObjectTrait>,
         draw_handler: &mut RaylibDrawHandle,
     ) -> Vec<Vector2> {
         let mut ret: Vec<Vector2> = Vec::new();
