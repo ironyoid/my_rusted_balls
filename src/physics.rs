@@ -2,10 +2,21 @@ use crate::{objects::ObjectTrait, quadtree};
 use raylib::math::Vector2;
 use std::time::SystemTime;
 
-pub struct BaseModel;
+pub struct BaseMovementModel;
+pub struct MouseMovementModel;
+pub struct BaseCollisionModel;
 
-pub trait ModelTrait {
-    fn process(
+pub trait MovementModel {
+    fn process_movement(
+        &mut self,
+        object: &mut Box<dyn ObjectTrait>,
+        ext_move: Option<Vector2>,
+        time_delta: f32,
+    );
+}
+
+pub trait CollisionModel {
+    fn process_collision(
         &mut self,
         object: &mut Box<dyn ObjectTrait>,
         pen_vectors: &Vec<Option<Vector2>>,
@@ -13,97 +24,87 @@ pub trait ModelTrait {
     );
 }
 
-impl ModelTrait for BaseModel {
-    fn process(
+impl MovementModel for BaseMovementModel {
+    fn process_movement(
+        &mut self,
+        object: &mut Box<dyn ObjectTrait>,
+        ext_move: Option<Vector2>,
+        time_delta: f32,
+    ) {
+        let speed = object.get_speed();
+        let acel = object.get_acel();
+        object.update_speed(object.get_acel() * time_delta);
+        object.set_acel(acel);
+        let delta_y = speed.y * time_delta + acel.y * time_delta.powf(2.0) / 2.0;
+        object.update_coordinate(Vector2 {
+            x: speed.x * time_delta,
+            y: delta_y,
+        });
+    }
+}
+
+impl MovementModel for MouseMovementModel {
+    fn process_movement(
+        &mut self,
+        object: &mut Box<dyn ObjectTrait>,
+        ext_move: Option<Vector2>,
+        time_delta: f32,
+    ) {
+        if let Some(mouse_pos) = ext_move {
+            let delta_coord = mouse_pos - object.get_coordinate();
+            let mut speed = object.get_speed();
+            speed += delta_coord * 2.0;
+            object.update_coordinate(Vector2 {
+                x: speed.x * time_delta,
+                y: speed.y * time_delta,
+            });
+        }
+    }
+}
+
+impl CollisionModel for BaseCollisionModel {
+    fn process_collision(
         &mut self,
         object: &mut Box<dyn ObjectTrait>,
         pen_vectors: &Vec<Option<Vector2>>,
         time_delta: f32,
     ) {
-        // println!(
-        //     "speed: {},{} current: {},{} acel: {},{}",
-        //     speed.x,
-        //     speed.y,
-        //     object.get_coordinate().x,
-        //     object.get_coordinate().y,
-        //     acel.x,
-        //     acel.y
-        // );
         for pen in pen_vectors.iter() {
             if let Some(val) = pen {
                 let nrm = val.normalized();
-                //println!("pen: {},{} norm: {},{}", val.x, val.y, nrm.x, nrm.y);
                 let speed = object.get_speed();
                 let coords = object.get_coordinate();
                 let line = Vector2 { x: nrm.y, y: nrm.x };
-                let dp_a = speed.x * line.x + speed.y * line.y;
-                let pr_a = Vector2 {
-                    x: dp_a * line.x,
-                    y: dp_a * line.y,
-                };
-                let dp_b = speed.x * nrm.x + speed.y * nrm.y;
-                let pr_b = Vector2 {
-                    x: dp_b * nrm.x,
-                    y: dp_b * nrm.y,
-                };
-                let new_speed = Vector2 {
-                    x: pr_a.x - pr_b.x,
-                    y: pr_a.y - pr_b.y,
-                };
-                let new_coords = Vector2 {
+
+                object.set_speed(Vector2 {
+                    x: (speed.x * line.x + speed.y * line.y) * line.x
+                        - (speed.x * nrm.x + speed.y * nrm.y) * nrm.x,
+                    y: (speed.x * line.x + speed.y * line.y) * line.y
+                        - (speed.x * nrm.x + speed.y * nrm.y) * nrm.y,
+                });
+                object.set_coordinate(Vector2 {
                     x: coords.x + val.x,
                     y: coords.y + val.y,
-                };
-                // println!("new_speed: {},{}", new_speed.x, new_speed.y);
-                // println!("new_coords: {},{}", new_coords.x, new_coords.y);
-                object.set_speed(new_speed);
-                object.set_coordinate(new_coords);
+                });
             }
-
-            let speed = object.get_speed();
-            let acel = object.get_acel();
-            object.update_speed(object.get_acel() * time_delta);
-            object.set_acel(acel);
-            let delta_y = speed.y * time_delta + acel.y * time_delta.powf(2.0) / 2.0;
-            object.update_coordinate(Vector2 {
-                x: speed.x * time_delta,
-                y: delta_y,
-            });
-            //object.set_acel(new_acel);
         }
-        // println!(
-        //     "speed: {},{} current: {},{} acel: {}",
-        //     self.speed.x, self.speed.y, self.current.x, self.current.y, self.acel.y
-        // );
-        // self.speed = self.speed + self.acel * time_delta;
-        // self.acel.x = self.acel.x / 1.15;
-        // let delta_y = self.speed.y * time_delta + self.acel.y * time_delta.powf(2.0) / 2.0;
-        // self.current.y = self.current.y + delta_y;
-        // self.current.x = self.current.x + self.speed.x * time_delta;
-
-        // if self.detect_collision(w, h) {
-        //     self.speed = -self.speed * 0.9;
-        // }
-        // if self.detect_collision(w, h) {
-        //     self.y = h as f64 - self.radius;
-        //     self.speed = -self.speed;
-        //     self.y -= delta_y;
-        // }
     }
 }
 
-pub struct Physics<T: ModelTrait> {
-    model: T,
+pub struct Model<T: MovementModel, E: CollisionModel> {
+    m_model: T,
+    c_model: E,
     screen_width: f32,
     screen_height: f32,
     last_time: f64,
     period: f64,
 }
 
-impl<T: ModelTrait> Physics<T> {
-    pub fn new(model: T, width: f32, height: f32, period: f64) -> Self {
-        Physics {
-            model: model,
+impl<T: MovementModel, E: CollisionModel> Model<T, E> {
+    pub fn new(m_model: T, c_model: E, width: f32, height: f32, period: f64) -> Self {
+        Model {
+            m_model: m_model,
+            c_model: c_model,
             screen_height: height,
             screen_width: width,
             last_time: Self::get_time_s(),
@@ -122,16 +123,14 @@ impl<T: ModelTrait> Physics<T> {
         &mut self,
         mov_objects: &mut Vec<Box<dyn ObjectTrait>>,
         obj_tree: &mut quadtree::QuadTree,
+        ext_move: Option<Vector2>,
         time_delta: f32,
     ) {
         for obj in mov_objects.iter_mut() {
-            let mut pen_vector: Vec<Option<Vector2>> = Vec::new();
-            let tmp = self.screen_collision(obj);
-            let mut st_obj = obj_tree.query(obj);
-            pen_vector.append(&mut st_obj);
-            pen_vector.push(tmp);
-
-            self.model.process(obj, &pen_vector, time_delta);
+            let mut pen_vector = obj_tree.query(obj);
+            pen_vector.push(self.screen_collision(obj));
+            self.c_model.process_collision(obj, &pen_vector, time_delta);
+            self.m_model.process_movement(obj, ext_move, time_delta);
         }
     }
 
@@ -139,90 +138,34 @@ impl<T: ModelTrait> Physics<T> {
         &mut self,
         mov_objects: &mut Vec<Box<dyn ObjectTrait>>,
         obj_tree: &mut quadtree::QuadTree,
+        ext_move: Option<Vector2>,
     ) {
         let curr_time = Self::get_time_s();
         let time_delta = curr_time - self.last_time;
-        //println!("time: {} {}", curr_time, Self::get_time_s());
-
         if time_delta >= self.period {
             self.last_time = curr_time;
-            self.process(mov_objects, obj_tree, time_delta as f32);
+            self.process(mov_objects, obj_tree, ext_move, time_delta as f32);
         }
     }
 
     fn screen_collision(&mut self, object: &mut Box<dyn ObjectTrait>) -> Option<Vector2> {
         let bx = object.get_box();
-        if bx.get_lefttop().x <= 0.0
-            && bx.get_lefttop().y >= 0.0
-            && bx.get_bottom_y() <= self.screen_height
-        {
-            //return Some(Vector2 { x: 1.0, y: 0.0 });
-            return Some(Vector2 {
-                x: -bx.get_lefttop().x,
-                y: 0.0,
-            });
+        let mut ret = Vector2 { x: 0.0, y: 0.0 };
+        if bx.get_lefttop().x <= 0.0 {
+            ret.x = -bx.get_lefttop().x;
         }
-        if bx.get_right_x() >= self.screen_width
-            && bx.get_lefttop().y >= 0.0
-            && bx.get_bottom_y() <= self.screen_height
-        {
-            //return Some(Vector2 { x: -1.0, y: 0.0 });
-
-            return Some(Vector2 {
-                x: self.screen_width - bx.get_right_x(),
-                y: 0.0,
-            });
+        if bx.get_right_x() >= self.screen_width {
+            ret.x = self.screen_width - bx.get_right_x();
         }
-        if bx.get_lefttop().y <= 0.0
-            && bx.get_lefttop().x >= 0.0
-            && bx.get_right_x() <= self.screen_width
-        {
-            //return Some(Vector2 { x: 0.0, y: 1.0 });
-            return Some(Vector2 {
-                x: 0.0,
-                y: -bx.get_lefttop().y,
-            });
+        if bx.get_lefttop().y <= 0.0 {
+            ret.y = -bx.get_lefttop().y;
         }
-        if bx.get_bottom_y() >= self.screen_height
-            && bx.get_lefttop().x >= 0.0
-            && bx.get_right_x() <= self.screen_width
-        {
-            //return Some(Vector2 { x: 0.0, y: -1.0 });
-            return Some(Vector2 {
-                x: 0.0,
-                y: self.screen_height - bx.get_bottom_y(),
-            });
+        if bx.get_bottom_y() >= self.screen_height {
+            ret.y = self.screen_height - bx.get_bottom_y();
         }
-
-        if bx.get_lefttop().x <= 0.0 && bx.get_lefttop().y <= 0.0 {
-            //return Some(Vector2 { x: 0.0, y: -1.0 });
-            return Some(Vector2 {
-                x: -bx.get_lefttop().x,
-                y: -bx.get_lefttop().y,
-            });
+        if ret.x != 0.0 || ret.y != 0.0 {
+            return Some(ret);
         }
-        if bx.get_right_x() >= self.screen_width && bx.get_lefttop().y <= 0.0 {
-            //return Some(Vector2 { x: 0.0, y: -1.0 });
-            return Some(Vector2 {
-                x: self.screen_width - bx.get_right_x(),
-                y: -bx.get_lefttop().y,
-            });
-        }
-        if bx.get_bottom_y() >= self.screen_height && bx.get_right_x() >= self.screen_width {
-            //return Some(Vector2 { x: 0.0, y: -1.0 });
-            return Some(Vector2 {
-                x: self.screen_width - bx.get_right_x(),
-                y: self.screen_height - bx.get_bottom_y(),
-            });
-        }
-        if bx.get_bottom_y() >= self.screen_height && bx.get_lefttop().x <= 0.0 {
-            //return Some(Vector2 { x: 0.0, y: -1.0 });
-            return Some(Vector2 {
-                x: -bx.get_lefttop().x,
-                y: self.screen_height - bx.get_bottom_y(),
-            });
-        }
-
         None
     }
 }

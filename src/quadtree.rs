@@ -123,7 +123,6 @@ impl QuadBox {
             vec.y = md.y;
         }
         if (md.y + md.height).abs() < min {
-            //min = (md.y + md.height).abs();
             vec.x = 0.0;
             vec.y = md.y + md.height;
         }
@@ -131,7 +130,7 @@ impl QuadBox {
         if vec.x != 0.0 || vec.y != 0.0 {
             return Some(-vec);
         } else {
-            None
+            return None;
         }
     }
 }
@@ -361,10 +360,8 @@ impl Subtree {
         if let Some(x) = &mut self.0 {
             for n in x.values.iter_mut() {
                 let bx = u_box.minkowski_difference(&n.get_box());
-                //draw_handler.draw_rectangle_lines_ex(bx, 5.0, Color::GREEN);
                 if u_box.intersects(&n.get_box()) {
                     ret_elems.push(u_box.pen_vector(&n.get_box(), &bx));
-                    n.set_color(Color::RED);
                 }
             }
 
@@ -384,7 +381,7 @@ impl Subtree {
 
 impl QuadTree {
     const MAX_DEPTH: u32 = 16;
-    const MAX_NUM_OF_ELEMS: usize = 2;
+    const MAX_NUM_OF_ELEMS: usize = 4;
     pub fn new(width: f32, height: f32) -> Self {
         Self {
             root: Subtree::new(),

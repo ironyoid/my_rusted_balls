@@ -29,7 +29,7 @@ pub struct Rectangle {
     height: f32,
     speed: Vector2,
     acel: Vector2,
-    name: String,
+    name: Option<String>,
     color: Color,
 }
 
@@ -39,7 +39,7 @@ pub struct RectangleBuilder {
     height: f32,
     speed: Vector2,
     acel: Vector2,
-    name: String,
+    name: Option<String>,
     color: Color,
 }
 
@@ -51,7 +51,7 @@ impl RectangleBuilder {
             height: 0.0,
             speed: Vector2 { x: 0.0, y: 0.0 },
             acel: Vector2 { x: 0.0, y: 0.0 },
-            name: String::from("Object"),
+            name: None,
             color: Color::BLACK,
         }
     }
@@ -66,7 +66,7 @@ impl RectangleBuilder {
         self
     }
     pub fn name(mut self, name: &str) -> RectangleBuilder {
-        self.name = name.to_string();
+        self.name = Some(name.to_string());
         self
     }
     pub fn color(mut self, color: Color) -> RectangleBuilder {
@@ -100,27 +100,31 @@ impl std::fmt::Display for Rectangle {
         write!(
             f,
             "({}:[{}, {}, {}, {}])",
-            self.name, self.coordinate.x, self.coordinate.y, self.width, self.height
+            self.name.clone().unwrap_or("".to_string()),
+            self.coordinate.x,
+            self.coordinate.y,
+            self.width,
+            self.height
         )
     }
 }
 
 impl ObjectTrait for Rectangle {
     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
-        draw_handler.draw_text(
-            &self.name,
-            self.coordinate.x as i32 + 5,
-            self.coordinate.y as i32 + 5,
-            7,
-            Color::BLACK,
-        );
         let rec = raylib::prelude::Rectangle {
             x: self.coordinate.x,
             y: self.coordinate.y,
             width: self.width,
             height: self.height,
         };
-        draw_handler.draw_rectangle_lines_ex(rec, 3.0, self.color);
+        draw_handler.draw_rectangle_rec(rec, self.color);
+        draw_handler.draw_text(
+            &self.name.clone().unwrap_or("".to_string()),
+            self.coordinate.x as i32 + 5,
+            self.coordinate.y as i32 + 5,
+            15,
+            Color::BLACK,
+        );
     }
 
     fn set_color(&mut self, color: Color) {
@@ -174,7 +178,7 @@ pub struct Circle {
     pub speed: Vector2,
     pub radius: f32,
     pub color: Color,
-    name: String,
+    name: Option<String>,
 }
 pub struct CircleBuilder {
     pub coordinate: Vector2,
@@ -182,7 +186,7 @@ pub struct CircleBuilder {
     pub speed: Vector2,
     pub radius: f32,
     pub color: Color,
-    name: String,
+    name: Option<String>,
 }
 impl CircleBuilder {
     pub fn new() -> CircleBuilder {
@@ -192,7 +196,7 @@ impl CircleBuilder {
             speed: Vector2 { x: 0.0, y: 0.0 },
             radius: 0.0,
             color: Color::RED,
-            name: String::from("Object"),
+            name: None,
         }
     }
     pub fn coordinate(mut self, x: f32, y: f32) -> CircleBuilder {
@@ -201,7 +205,7 @@ impl CircleBuilder {
         self
     }
     pub fn name(mut self, name: &str) -> CircleBuilder {
-        self.name = name.to_string();
+        self.name = Some(name.to_string());
         self
     }
     pub fn acel(mut self, acel: Vector2) -> CircleBuilder {
@@ -236,8 +240,11 @@ impl std::fmt::Display for Circle {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "([{}, {}, {}]])",
-            self.coordinate.x, self.coordinate.y, self.radius
+            "({}:[{}, {}, {}]])",
+            self.name.clone().unwrap_or("".to_string()),
+            self.coordinate.x,
+            self.coordinate.y,
+            self.radius
         )
     }
 }
@@ -245,7 +252,7 @@ impl std::fmt::Display for Circle {
 impl ObjectTrait for Circle {
     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
         draw_handler.draw_text(
-            &self.name,
+            &self.name.clone().unwrap_or("".to_string()),
             self.coordinate.x as i32 + 5,
             self.coordinate.y as i32 + 5,
             7,
