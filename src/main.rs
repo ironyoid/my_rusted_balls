@@ -51,8 +51,9 @@ fn main() {
             .build(),
     );
     let move_elems = &mut vec![move_elem];
+
     let mut phy = physics::Model::new(
-        physics::BaseMovementModel {},
+        physics::MouseMovementModel::new(),
         physics::BaseCollisionModel {},
         WINDOW_WIDTH as f32,
         WINDOW_HEIGHT as f32,
@@ -65,9 +66,9 @@ fn main() {
 
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
+        phy.get_m_model().set_mouse_position(d.get_mouse_position());
         d.clear_background(Color::WHITE);
-        let mouse_vec = d.get_mouse_position();
-        phy.run(move_elems, &mut tree, Some(mouse_vec));
+        phy.run(move_elems, &mut tree);
         move_elems[0].draw(&mut d);
         for n in elems.iter() {
             n.draw(&mut d);

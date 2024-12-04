@@ -3,16 +3,10 @@ use raylib::math::Vector2;
 use std::time::SystemTime;
 
 pub struct BaseMovementModel;
-pub struct MouseMovementModel;
 pub struct BaseCollisionModel;
 
 pub trait MovementModel {
-    fn process_movement(
-        &mut self,
-        object: &mut Box<dyn ObjectTrait>,
-        ext_move: Option<Vector2>,
-        time_delta: f32,
-    );
+    fn process_movement(&mut self, object: &mut Box<dyn ObjectTrait>, time_delta: f32);
 }
 
 pub trait CollisionModel {
@@ -25,12 +19,7 @@ pub trait CollisionModel {
 }
 
 impl MovementModel for BaseMovementModel {
-    fn process_movement(
-        &mut self,
-        object: &mut Box<dyn ObjectTrait>,
-        ext_move: Option<Vector2>,
-        time_delta: f32,
-    ) {
+    fn process_movement(&mut self, object: &mut Box<dyn ObjectTrait>, time_delta: f32) {
         let speed = object.get_speed();
         let acel = object.get_acel();
         object.update_speed(object.get_acel() * time_delta);
@@ -43,22 +32,30 @@ impl MovementModel for BaseMovementModel {
     }
 }
 
+pub struct MouseMovementModel {
+    mouse_position: Vector2,
+}
+
 impl MovementModel for MouseMovementModel {
-    fn process_movement(
-        &mut self,
-        object: &mut Box<dyn ObjectTrait>,
-        ext_move: Option<Vector2>,
-        time_delta: f32,
-    ) {
-        if let Some(mouse_pos) = ext_move {
-            let delta_coord = mouse_pos - object.get_coordinate();
-            let mut speed = object.get_speed();
-            speed += delta_coord * 2.0;
-            object.update_coordinate(Vector2 {
-                x: speed.x * time_delta,
-                y: speed.y * time_delta,
-            });
+    fn process_movement(&mut self, object: &mut Box<dyn ObjectTrait>, time_delta: f32) {
+        let delta_coord = self.mouse_position - object.get_coordinate();
+        let mut speed = object.get_speed();
+        speed += delta_coord * 2.0;
+        object.update_coordinate(Vector2 {
+            x: speed.x * time_delta,
+            y: speed.y * time_delta,
+        });
+    }
+}
+
+impl MouseMovementModel {
+    pub fn new() -> Self {
+        MouseMovementModel {
+            mouse_position: Vector2 { x: 0.0, y: 0.0 },
         }
+    }
+    pub fn set_mouse_position(&mut self, coords: Vector2) {
+        self.mouse_position = coords;
     }
 }
 
@@ -123,14 +120,14 @@ impl<T: MovementModel, E: CollisionModel> Model<T, E> {
         &mut self,
         mov_objects: &mut Vec<Box<dyn ObjectTrait>>,
         obj_tree: &mut quadtree::QuadTree,
-        ext_move: Option<Vector2>,
+
         time_delta: f32,
     ) {
         for obj in mov_objects.iter_mut() {
             let mut pen_vector = obj_tree.query(obj);
             pen_vector.push(self.screen_collision(obj));
             self.c_model.process_collision(obj, &pen_vector, time_delta);
-            self.m_model.process_movement(obj, ext_move, time_delta);
+            self.m_model.process_movement(obj, time_delta);
         }
     }
 
@@ -138,13 +135,12 @@ impl<T: MovementModel, E: CollisionModel> Model<T, E> {
         &mut self,
         mov_objects: &mut Vec<Box<dyn ObjectTrait>>,
         obj_tree: &mut quadtree::QuadTree,
-        ext_move: Option<Vector2>,
     ) {
         let curr_time = Self::get_time_s();
         let time_delta = curr_time - self.last_time;
         if time_delta >= self.period {
             self.last_time = curr_time;
-            self.process(mov_objects, obj_tree, ext_move, time_delta as f32);
+            self.process(mov_objects, obj_tree, time_delta as f32);
         }
     }
 
@@ -167,5 +163,13 @@ impl<T: MovementModel, E: CollisionModel> Model<T, E> {
             return Some(ret);
         }
         None
+    }
+
+    pub fn get_m_model(&mut self) -> &mut T {
+        &mut self.m_model
+    }
+
+    pub fn get_c_model(&mut self) -> &mut E {
+        &mut self.c_model
     }
 }
