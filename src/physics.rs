@@ -1,4 +1,5 @@
-use crate::{objects::MovingObject, quadtree, TreeObject};
+use crate::quadtree::TreeObject;
+use crate::{objects::MovingObject, quadtree};
 use raylib::math::Vector2;
 use std::time::SystemTime;
 
@@ -88,7 +89,7 @@ impl CollisionModel for BaseCollisionModel {
     }
 }
 
-pub struct Model<T: MovementModel, E: CollisionModel> {
+pub struct PhysicsModel<T: MovementModel, E: CollisionModel> {
     m_model: T,
     c_model: E,
     screen_width: f32,
@@ -97,9 +98,9 @@ pub struct Model<T: MovementModel, E: CollisionModel> {
     period: f64,
 }
 
-impl<T: MovementModel, E: CollisionModel> Model<T, E> {
+impl<T: MovementModel, E: CollisionModel> PhysicsModel<T, E> {
     pub fn new(m_model: T, c_model: E, width: f32, height: f32, period: f64) -> Self {
-        Model {
+        PhysicsModel {
             m_model: m_model,
             c_model: c_model,
             screen_height: height,
