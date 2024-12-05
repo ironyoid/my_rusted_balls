@@ -1,4 +1,4 @@
-use crate::{objects::ObjectTrait, quadtree};
+use crate::{objects::MovingObject, quadtree, TreeObject};
 use raylib::math::Vector2;
 use std::time::SystemTime;
 
@@ -6,20 +6,20 @@ pub struct BaseMovementModel;
 pub struct BaseCollisionModel;
 
 pub trait MovementModel {
-    fn process_movement(&mut self, object: &mut Box<dyn ObjectTrait>, time_delta: f32);
+    fn process_movement(&mut self, object: &mut Box<impl MovingObject>, time_delta: f32);
 }
 
 pub trait CollisionModel {
     fn process_collision(
         &mut self,
-        object: &mut Box<dyn ObjectTrait>,
+        object: &mut Box<impl MovingObject>,
         pen_vectors: &Vec<Option<Vector2>>,
         time_delta: f32,
     );
 }
 
 impl MovementModel for BaseMovementModel {
-    fn process_movement(&mut self, object: &mut Box<dyn ObjectTrait>, time_delta: f32) {
+    fn process_movement(&mut self, object: &mut Box<impl MovingObject>, time_delta: f32) {
         let speed = object.get_speed();
         let acel = object.get_acel();
         object.update_speed(object.get_acel() * time_delta);
@@ -37,7 +37,7 @@ pub struct MouseMovementModel {
 }
 
 impl MovementModel for MouseMovementModel {
-    fn process_movement(&mut self, object: &mut Box<dyn ObjectTrait>, time_delta: f32) {
+    fn process_movement(&mut self, object: &mut Box<impl MovingObject>, time_delta: f32) {
         let delta_coord = self.mouse_position - object.get_coordinate();
         let mut speed = object.get_speed();
         speed += delta_coord * 2.0;
@@ -62,7 +62,7 @@ impl MouseMovementModel {
 impl CollisionModel for BaseCollisionModel {
     fn process_collision(
         &mut self,
-        object: &mut Box<dyn ObjectTrait>,
+        object: &mut Box<impl MovingObject>,
         pen_vectors: &Vec<Option<Vector2>>,
         time_delta: f32,
     ) {
@@ -118,9 +118,8 @@ impl<T: MovementModel, E: CollisionModel> Model<T, E> {
 
     fn process(
         &mut self,
-        mov_objects: &mut Vec<Box<dyn ObjectTrait>>,
+        mov_objects: &mut Vec<Box<impl TreeObject + MovingObject>>,
         obj_tree: &mut quadtree::QuadTree,
-
         time_delta: f32,
     ) {
         for obj in mov_objects.iter_mut() {
@@ -133,7 +132,7 @@ impl<T: MovementModel, E: CollisionModel> Model<T, E> {
 
     pub fn run(
         &mut self,
-        mov_objects: &mut Vec<Box<dyn ObjectTrait>>,
+        mov_objects: &mut Vec<Box<impl MovingObject + TreeObject>>,
         obj_tree: &mut quadtree::QuadTree,
     ) {
         let curr_time = Self::get_time_s();
@@ -144,7 +143,10 @@ impl<T: MovementModel, E: CollisionModel> Model<T, E> {
         }
     }
 
-    fn screen_collision(&mut self, object: &mut Box<dyn ObjectTrait>) -> Option<Vector2> {
+    fn screen_collision(
+        &mut self,
+        object: &mut Box<impl MovingObject + TreeObject>,
+    ) -> Option<Vector2> {
         let bx = object.get_box();
         let mut ret = Vector2 { x: 0.0, y: 0.0 };
         if bx.get_lefttop().x <= 0.0 {

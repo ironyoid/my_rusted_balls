@@ -1,11 +1,15 @@
-use super::objects;
 use core::f32;
+use dyn_clone::DynClone;
 use raylib::{
-    color::Color,
     math::Rectangle,
     prelude::{RaylibDrawHandle, Vector2},
 };
 use std::collections::VecDeque;
+
+pub trait TreeObject: std::fmt::Display + DynClone {
+    fn get_box(&self) -> QuadBox;
+    fn draw(&self, draw_handler: &mut RaylibDrawHandle);
+}
 pub struct QuadTree {
     root: Subtree,
     u_box: QuadBox,
@@ -87,12 +91,12 @@ impl QuadBox {
             && u_box.get_bottom_y() <= self.get_bottom_y()
     }
 
-    fn intersects(&self, u_box: &QuadBox) -> bool {
+    pub fn intersects(&self, u_box: &QuadBox) -> bool {
         let ret = self.minkowski_difference(&u_box);
         ret.x <= 0.0 && ret.y <= 0.0 && (ret.x + ret.width) >= 0.0 && (ret.y + ret.height) >= 0.0
     }
 
-    fn minkowski_difference(&self, u_box: &QuadBox) -> Rectangle {
+    pub fn minkowski_difference(&self, u_box: &QuadBox) -> Rectangle {
         let mut ret = Rectangle {
             y: self.y - u_box.get_bottom_y(),
             x: self.x - u_box.get_right_x(),
@@ -104,7 +108,7 @@ impl QuadBox {
         ret
     }
 
-    fn pen_vector(&self, u_box: &QuadBox, md: &Rectangle) -> Option<Vector2> {
+    pub fn pen_vector(&self, u_box: &QuadBox, md: &Rectangle) -> Option<Vector2> {
         let mut vec = Vector2 { x: 0.0, y: 0.0 };
         let mut min = f32::MAX;
         if md.x.abs() < min {
@@ -136,7 +140,7 @@ impl QuadBox {
 }
 
 struct Node {
-    values: Vec<Box<dyn objects::ObjectTrait>>,
+    values: Vec<Box<dyn TreeObject>>,
     children: [Subtree; 4],
 }
 
@@ -185,7 +189,6 @@ impl Subtree {
             Some(x) => {
                 for val in x.values.iter_mut() {
                     val.draw(draw_handler);
-                    val.set_color(Color::BLUE);
                 }
                 for (idx, elem) in x.children.iter_mut().enumerate() {
                     elem.draw_tree(draw_handler);
@@ -247,7 +250,7 @@ impl Subtree {
         &mut self,
         depth: u32,
         u_box: &QuadBox,
-        elem: &Box<dyn objects::ObjectTrait>,
+        elem: &Box<dyn TreeObject>,
         max_depth: u32,
         max_num: usize,
     ) {
@@ -282,7 +285,7 @@ impl Subtree {
         }
     }
 
-    fn split(node: &mut Box<Node>, u_box: &QuadBox, elem: &Box<dyn objects::ObjectTrait>) {
+    fn split(node: &mut Box<Node>, u_box: &QuadBox, elem: &Box<dyn TreeObject>) {
         for n in node.children.iter_mut() {
             n.0 = Some(Box::new(Node::new()));
         }
@@ -302,7 +305,7 @@ impl Subtree {
         }
     }
 
-    fn get_quadrant(node_box: &QuadBox, elem: &Box<dyn objects::ObjectTrait>) -> i32 {
+    fn get_quadrant(node_box: &QuadBox, elem: &Box<dyn TreeObject>) -> i32 {
         let center = node_box.get_center();
         let elem_box = elem.get_box();
         if elem_box.get_right_x() < center.x {
@@ -380,7 +383,7 @@ impl Subtree {
 }
 
 impl QuadTree {
-    const MAX_DEPTH: u32 = 16;
+    const MAX_DEPTH: u32 = 128;
     const MAX_NUM_OF_ELEMS: usize = 4;
     pub fn new(width: f32, height: f32) -> Self {
         Self {
@@ -390,7 +393,7 @@ impl QuadTree {
             max_num_of_elems: Self::MAX_NUM_OF_ELEMS,
         }
     }
-    pub fn add(&mut self, elem: &Box<dyn objects::ObjectTrait>) {
+    pub fn add(&mut self, elem: &Box<dyn TreeObject>) {
         self.root
             .add(0, &self.u_box, elem, self.max_depth, self.max_num_of_elems);
     }
@@ -405,7 +408,7 @@ impl QuadTree {
     pub fn draw_tree(&mut self, draw_handler: &mut RaylibDrawHandle) {
         self.root.draw_tree(draw_handler);
     }
-    pub fn query(&mut self, elem: &Box<dyn objects::ObjectTrait>) -> Vec<Option<Vector2>> {
+    pub fn query(&mut self, elem: &Box<impl TreeObject>) -> Vec<Option<Vector2>> {
         let mut ret: Vec<Option<Vector2>> = Vec::new();
         self.root.query(&self.u_box, &elem.get_box(), &mut ret);
         ret

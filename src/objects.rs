@@ -1,13 +1,10 @@
-use super::quadtree;
-use dyn_clone::DynClone;
+use crate::quadtree::*;
 use raylib::{
     color::Color,
     prelude::{RaylibDraw, RaylibDrawHandle, Vector2},
 };
 
-pub trait ObjectTrait: std::fmt::Display + DynClone {
-    fn draw(&self, draw_handler: &mut RaylibDrawHandle);
-
+pub trait MovingObject {
     fn set_coordinate(&mut self, new_vec: Vector2);
     fn set_color(&mut self, color: Color);
     fn set_speed(&mut self, speed: Vector2);
@@ -17,11 +14,11 @@ pub trait ObjectTrait: std::fmt::Display + DynClone {
     fn update_speed(&mut self, speed: Vector2);
     fn update_acel(&mut self, acel: Vector2);
 
-    fn get_box(&self) -> quadtree::QuadBox;
     fn get_coordinate(&self) -> Vector2;
     fn get_speed(&self) -> Vector2;
     fn get_acel(&self) -> Vector2;
 }
+
 #[derive(Clone)]
 pub struct Rectangle {
     coordinate: Vector2,
@@ -109,7 +106,7 @@ impl std::fmt::Display for Rectangle {
     }
 }
 
-impl ObjectTrait for Rectangle {
+impl TreeObject for Rectangle {
     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
         let rec = raylib::prelude::Rectangle {
             x: self.coordinate.x,
@@ -126,7 +123,17 @@ impl ObjectTrait for Rectangle {
             Color::BLACK,
         );
     }
+    fn get_box(&self) -> QuadBox {
+        QuadBox::new(
+            self.coordinate.x,
+            self.coordinate.y,
+            self.width,
+            self.height,
+        )
+    }
+}
 
+impl MovingObject for Rectangle {
     fn set_color(&mut self, color: Color) {
         self.color = color;
     }
@@ -152,14 +159,6 @@ impl ObjectTrait for Rectangle {
         self.speed += speed;
     }
 
-    fn get_box(&self) -> quadtree::QuadBox {
-        quadtree::QuadBox::new(
-            self.coordinate.x,
-            self.coordinate.y,
-            self.width,
-            self.height,
-        )
-    }
     fn get_acel(&self) -> Vector2 {
         self.acel
     }
@@ -249,7 +248,7 @@ impl std::fmt::Display for Circle {
     }
 }
 
-impl ObjectTrait for Circle {
+impl TreeObject for Circle {
     fn draw(&self, draw_handler: &mut RaylibDrawHandle) {
         draw_handler.draw_text(
             &self.name.clone().unwrap_or("".to_string()),
@@ -265,6 +264,17 @@ impl ObjectTrait for Circle {
             self.color,
         );
     }
+    fn get_box(&self) -> QuadBox {
+        QuadBox::new(
+            self.coordinate.x - self.radius,
+            self.coordinate.y - self.radius,
+            self.radius * 2.0,
+            self.radius * 2.0,
+        )
+    }
+}
+
+impl MovingObject for Circle {
     fn set_color(&mut self, color: Color) {
         self.color = color;
     }
@@ -288,14 +298,7 @@ impl ObjectTrait for Circle {
     fn update_speed(&mut self, speed: Vector2) {
         self.speed += speed
     }
-    fn get_box(&self) -> quadtree::QuadBox {
-        quadtree::QuadBox::new(
-            self.coordinate.x - self.radius,
-            self.coordinate.y - self.radius,
-            self.radius * 2.0,
-            self.radius * 2.0,
-        )
-    }
+
     fn get_acel(&self) -> Vector2 {
         self.acel
     }
